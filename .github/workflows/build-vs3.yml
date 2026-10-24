@@ -1,0 +1,36 @@
+name: Build FLMM Vox Clean VST3
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-windows-vst3:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build VST3
+        run: cmake --build build --config Release --target FLMMVoxClean_VST3
+
+      - name: Package VST3
+        shell: pwsh
+        run: |
+          $plugin = Get-ChildItem -Path build -Recurse -Directory -Filter "*.vst3" | Select-Object -First 1
+          if (-not $plugin) {
+            Write-Error "No se encontró el bundle .vst3 generado."
+            exit 1
+          }
+          Compress-Archive -Path $plugin.FullName -DestinationPath "$env:GITHUB_WORKSPACE/FLMM_Vox_Clean_Windows_VST3.zip" -Force
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FLMM-Vox-Clean-Windows-VST3
+          path: FLMM_Vox_Clean_Windows_VST3.zip
+          if-no-files-found: error
